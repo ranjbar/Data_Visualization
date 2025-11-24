@@ -1,0 +1,774 @@
+---
+title: "Data_visualization(I)"
+author: "Setareh"
+date: 'today'
+format:
+  html:
+    embed-resources: true
+    code-background: true
+editor: visual
+---
+
+## R info
+
+```{r}
+#| echo: false
+info <- sessionInfo()
+
+cat("R version:", info$R.version$version.string, "\n")
+cat("Operating system:", info$running, "\n")
+
+```
+
+# Libraries need to be installed and loaded
+
+```{r,warning = FALSE, message = FALSE}
+#| message: false
+rm(list = ls())
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(ggplot2)
+library(dplyr)
+library(MPsychoR) # for two data set on IQ and 
+library(kableExtra)
+library(ggpubr)
+library(scatterplot3d)
+library(GGally)
+
+```
+
+# Anscombe's quartet example
+
+```{r}
+#| echo: false
+# Lengthy manipulation to separate the data sets and put them together in a long format
+# Extract the first data set
+group1 <- anscombe[c("x1", "y1")]
+# Add the name of this group
+group1$group <- "First data set"
+# Standardise the column names
+colnames(group1) <- c("x", "y", "group")
+
+# Extract the second data set
+group2 <- anscombe[c("x2", "y2")]
+# Add the name of this group
+group2$group <- "Second data set"
+# Standardise the column names
+colnames(group2) <- c("x", "y", "group")
+
+# Extract the second data set
+group3 <- anscombe[c("x3", "y3")]
+# Add the name of this group
+group3$group <- "Third data set"
+# Standardise the column names
+colnames(group3) <- c("x", "y", "group")
+
+# Extract the second data set
+group4 <- anscombe[c("x4", "y4")]
+# Add the name of this group
+group4$group <- "Fourth data set"
+
+# Standardise the column names
+colnames(group4) <- c("x", "y", "group")
+
+# Combine the data
+data <- rbind(group1, group2, group3, group4)
+```
+
+Anscombe (1973) simulated Four data sets with identical descriptive statistics, they are available in R:
+
+```{r}
+#| echo: false
+summary(anscombe)
+
+```
+
+## Only graphical presentation could reveal the differences:
+
+```{r}
+#| echo: true
+p <- ggplot(data, aes(x=x, y=y))+geom_point(size=3)+geom_smooth(method = "lm", se=FALSE)
+
+# make separate plots for each dataset
+p + facet_wrap(~factor(group,levels=c("First data set","Second data set","Third data set","Fourth data set"))) +xlab("X_values")+ylab("Y_values")+ theme(text=element_text(size=18, family="Serif"))
+```
+
+This is how you can use the ggplot package the most powerful package for visualization in R . To get familiar with the elements of ggplot and how it work you can consult many online sources such as : [Introduction to ggplot](http://euclid.psych.yorku.ca/www/psy6135/lectures/ggplot-intro.pdf).
+
+## Another example: Jan Vanhove(2016):
+
+```{r}
+#| echo: true
+source("http://janhove.github.io/RCode/plot_r.R")
+plot_r(r=0.6, n=100, showdata = F)
+```
+
+# Univariate graphs
+
+## Categorical data
+
+### About the dataset:
+
+Haegeli et al. (2012) studied high-risk cohorts in a complex and dynamic risk environment. This dataset contains four variables related to preparedness before going for country skiing. The variables with response categories are 1) check avalanche danger information (check conditions on internet prior to leaving home; talk to ski patrol; check postings at gates or information kiosks at resort; do not check or Do not know), 2) discuss avalanche hazard in your group (all the time; 50% to 90% of time; 10% to 40% of time; never or solo traveler), 3) approach to decision making (dedicated leader or everybody contributes; person in front decides; everybody makes their own choices or solo traveler), and 4) use of avalanche safety gear (everybody carries beacon, shovel and probe; everybody carries beacon or beacon and shovel; some in group carry beacons; some in group have cell phones; no safety equipment is carried). The data is in the package "MpsychoR" use the following to load the data:
+
+```{r}
+#| echo: true
+library(MPsychoR)
+data("AvalanchePrep")
+
+
+AvalanchePrep$info <- factor(AvalanchePrep$info, labels=c("Internet","Others","Gate"," No check"))
+
+AvalanchePrep$discuss <- factor(AvalanchePrep$discuss, labels=c("all_time", "50%_90%", "10%_40%", "never"))
+
+AvalanchePrep$gear <- factor(AvalanchePrep$gear, labels=c("beacon and shovel", "beacon or shovel", "some-beacons","some-cell phones", "no safety"))
+
+AvalanchePrep$decision <- factor(AvalanchePrep$decision, labels=c("dedicated leader", "front person ", "own_choices"))
+```
+
+Look at the summary of your data, you can see what variables are in your data set and what type they are:
+
+```{r}
+summary(AvalanchePrep)
+```
+
+### Bar Plot
+
+```{r}
+#| eval: false
+#| echo: true
+
+# Codes from ChatGPT
+# Assuming `discuss` is a categorical variable in your dataset
+# Replace `your_data` with the actual dataset name
+ggplot(AvalanchePrep, aes(x = info)) +
+  geom_bar(fill = "skyblue") +
+  labs(title = "Distribution of Discuss Variable",
+       x = "Discuss Avalanche Preparedness",
+       y = "Frequency") +
+  theme_minimal()
+
+```
+
+```{r}
+# For categorical variable info calculate the percentage of each level
+plotdata <- AvalanchePrep %>%
+  count(info) %>%
+  mutate(pct = n / sum(n),
+         pctlabel = paste0(round(pct*100), "%"),
+         info_categories = c("Internet","Others","Gate"," No check"))
+
+# plot the bars as percentages, 
+ggplot(plotdata, 
+       aes(x = info_categories, y = pct)) + 
+  geom_bar(stat="identity", color="black") +
+  geom_text(aes(label = pctlabel), vjust=-0.25) +
+    labs(x = "Info", 
+       y = "Percent", 
+       title  = "A Barplot for Info")
+```
+
+```{r, echo=TRUE}
+# For categorical variable Discuss calculate the percentage of each level
+plotdata <- AvalanchePrep %>%
+  count(discuss) %>%
+  mutate(pct = n / sum(n),
+         pctlabel = paste0(round(pct*100), "%"),
+         diss_categories = c("all_time", "50%_90%", "10%_40%", "never"))
+
+# plot the bars as percentages, 
+ggplot(plotdata, 
+       aes(x = diss_categories, y = pct)) + 
+  geom_bar(stat="identity", fill="indianred3", color="black") +
+  geom_text(aes(label = pctlabel), vjust=-0.25) +
+    labs(x = "Discuss", 
+       y = "Percent", 
+       title  = "A Barplot for Discuss")
+```
+
+```{r, echo=TRUE}
+# For categorical variable Gear calculate the percentage of each level
+plotdata <- AvalanchePrep %>%
+  count(gear) %>%
+  mutate(pct = n / sum(n),
+         pctlabel = paste0(round(pct*100), "%"),
+         gear_categories = c("beacon and shovel", "beacon or shovel", "some-beacons","some-cell phones", "no safety"))
+
+# plot the bars as percentages, 
+ggplot(plotdata, 
+       aes(x = gear_categories, y = pct)) + 
+  geom_bar(stat="identity", color="black") +
+  geom_text(aes(label = pctlabel), vjust=-0.25) +
+    labs(x = "Gear", 
+       y = "Percent", 
+       title  = "A Barplot for safty Gears")
+```
+
+```{r, echo=TRUE}
+# For categorical variable Decission  calculate the percentage of each level
+plotdata <- AvalanchePrep %>%
+  count(decision) %>%
+  mutate(pct = n / sum(n),
+         pctlabel = paste0(round(pct*100), "%"),
+         dec_categories = c("dedicated leader", "front person ", "own_choices"))
+
+# plot the bars as percentages, 
+ggplot(plotdata, 
+       aes(x = dec_categories, y = pct)) + 
+  geom_bar(stat="identity", color="black") +
+  geom_text(aes(label = pctlabel), vjust=-0.25) +
+    labs(x = "Decision", 
+       y = "Percent", 
+       title  = "A Barplot for Decision Method")
+```
+
+### Reordering and turning the axis and bar chart
+
+```{r, echo=TRUE}
+# For categorical variable Gear calculate the percentage of each level
+plotdata <- AvalanchePrep %>%
+  count(gear) %>%
+  mutate(pct = n / sum(n),
+         pctlabel = paste0(round(pct*100), "%"),
+         gear_categories = c("beacon and shovel", "beacon or shovel", "some-beacons","some-cell phones", "no safety"))
+
+# plot the bars as percentages, 
+ggplot(plotdata, 
+       aes(x = gear_categories, y = pct)) + 
+  geom_bar(stat="identity", color="black") +
+  geom_text(aes(label = pctlabel), hjust=-0.15) +ylim(c(0,0.75))+
+    labs(x = "Gear", 
+       y = "Percent", 
+       title  = "A Barplot for safty Gears")+
+  coord_flip()
+```
+
+-   Alternatively, you can rotate the axis labels:
+
+```{r, echo=TRUE}
+# For categorical variable Gear calculate the percentage of each level
+plotdata <- AvalanchePrep %>%
+  count(gear) %>%
+  mutate(pct = n / sum(n),
+         pctlabel = paste0(round(pct*100), "%"),
+         gear_categories = c("beacon and shovel", "beacon or shovel", "some-beacons","some-cell phones", "no safety"))
+
+# plot the bars as percentages, 
+ggplot(plotdata, 
+       aes(x = gear_categories, y = pct)) + 
+  geom_bar(stat="identity", color="black") +
+  geom_text(aes(label = pctlabel), vjust=-0.25) +ylim(c(0,0.75))+
+    labs(x = "Gear", 
+       y = "Percent", 
+       title  = "A Barplot for safty Gears")+
+theme(axis.text.x = element_text(angle = 45, 
+                                   hjust = 1))
+```
+
+### Sort the bars by frequencies
+
+```{r, echo=TRUE}
+# For categorical variable info calculate the percentage of each level
+plotdata <- AvalanchePrep %>%
+  count(info) %>%
+  mutate(pct = n / sum(n),
+         pctlabel = paste0(round(pct*100), "%"),
+         info_categories = c("Internet","Others","Gate"," No check"))
+
+# plot the bars as percentages, 
+ggplot(plotdata, 
+       aes(x = reorder(info_categories,-pct), y = pct)) + 
+  geom_bar(stat="identity", color="black") +
+  geom_text(aes(label = pctlabel), vjust=-0.25) +
+    labs(x = "Info", 
+       y = "Percent", 
+       title  = "A Barplot for Info")
+```
+
+### Pie Charts
+
+Bar charts are preferred to the pie chart is the aim is to compare the categories. Pie charts are used mainly when the goal is see the percentage of each category with the whole.
+
+```{r, echo=TRUE}
+# For categorical variable info calculate the percentage of each level
+plotdata <- AvalanchePrep %>%
+  count(gear) %>%
+  mutate(pct = n / sum(n),
+         pctlabel = paste0(round(pct*100), "%"),
+         gear_categories = c("beacon and shovel", "beacon or shovel", "some-beacons","some-cell phones", "no safety"))
+
+# plot the bars as percentages, 
+ggplot(plotdata, 
+       aes(x = "", y = pct, fill = gear_categories)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = pctlabel),
+            position = position_stack(vjust = 0.5)) +
+  coord_polar("y") +
+  theme_void()+ggtitle("")+ggtitle("Use of avalanche safety Gear")
+```
+
+### Polar coordinate Bar-chart
+
+```{r,echo=TRUE}
+ggplot(AvalanchePrep)+geom_bar(aes(x=gear, y=stat(prop)*100,group=1)) + ylab("Percentage %")+ xlab("Check avalanche danger information")+ theme_light()+coord_polar()+scale_x_discrete(labels=c("everybody-everything", "everybody-somthing", "some-beacons","some-cell phones", "no safety equipment"))
+```
+
+## Quantitative data
+
+### About granularity dataset: 
+
+Granularity refers to a person’s ability to separate their emotions into specific types. People with low granularity struggle to separate their emotions (e.g., reporting that sadness, anger, fear, and others all just feel "bad""), whereas people with high granularity are very specific in how they parse their emotions (e.g., easily distinguishing between nuanced emotions like disappointment and frustration). A few outliers were removed compared to the original data.
+
+```{r, echo=TRUE}
+data("granularity")
+
+```
+
+### Histogram of Age
+
+```{r,echo=TRUE}
+hist_age<- ggplot(granularity)+geom_histogram(aes(x=age,y=..density..),bins = 10)+xlab("Age")+ggtitle("A Histogram with 10 bins")
+hist_age
+```
+
+### binwidth and bin
+
+```{r,echo=TRUE}
+hist_gran1 <- ggplot(granularity)+geom_histogram(aes(x=gran,y=..density..))+xlab("Granularity")
+hist_gran2 <- ggplot(granularity)+geom_histogram(aes(x=gran,y=..density..),binwidth = 0.2)+xlab("Granularity")
+hist_gran3 <- ggplot(granularity)+geom_histogram(aes(x=gran,y=..density..),bins = 10)+xlab("Granularity")
+ggarrange(hist_gran1,hist_gran2,hist_gran3,nrow=1)
+```
+
+### Kernel density
+
+```{r, echo=TRUE}
+# Kernel density with the vertical line at mean
+ggplot(granularity,aes(x=gran))+geom_density()+xlab("Granularity")+ylab("Proportion")+ggtitle("Kernel Density")+ geom_vline(aes(xintercept=mean(gran)),
+            color="blue", linetype="dashed", size=1)
+
+# Coloring fill of kernel density
+ggplot(granularity,aes(x=gran))+geom_density(color="darkblue", fill="lightblue")+xlab("Granularity")+ylab("Proportion")+ggtitle("Kernel Density")
+
+# Superpose kernel density and histogram with optimum bin_width
+ggplot(granularity)+geom_density(aes(x=gran))+geom_histogram(aes(x=gran,y=..density..),binwidth = function(x) 2 * IQR(x) / (length(x)^(1/3)),alpha=0.5,color="black")+xlab("Granularity")+ylab("Proportion")+ggtitle("Kernel Density")
+```
+
+### Dotplot
+
+```{r, echo=TRUE}
+ggplot(granularity)+geom_dotplot(aes(x=gran))+xlab("Granularity")+ylab("Proportion")+ggtitle("Dotplot")
+
+```
+
+### Boxplot
+
+```{r, echo=TRUE}
+ggplot(granularity,aes(y=gran,x="Granularity"))+geom_boxplot(outlier.colour ="red")+geom_jitter(color="blue",height = 0,width = 0.2)+ xlab("")+ylab("Value")+ggtitle("Boxplot")
+```
+
+### Violon Plot
+
+```{r, echo=TRUE}
+ggplot(granularity,aes(y=gran,x="Granularity"))+geom_violin()+ geom_boxplot(width=0.2) + geom_jitter(color="blue",height = 0,width = 0.2)+ xlab("")+ylab("Value")+ggtitle("Violin Plot")
+```
+
+# Bivariate graphs
+
+Let’s examine the relationship between automobile safety gears the group take with them and amount of time they dedicate to discuss among each other.
+
+## Stacked Bar chart
+
+```{r, echo=TRUE}
+# stacked bar chart
+ggplot(AvalanchePrep, aes(x = discuss, fill = gear )) + 
+  geom_bar(position = "stack")+labs(x="Discuss",y="Count")
+```
+
+-   Group one is the highest, and no one who take everything with them will never discuss with others.
+
+## Grouped Bar chart
+
+```{r,echo=TRUE}
+# grouped bar plot preserving zero count bars
+ggplot(AvalanchePrep, aes(x = discuss, fill =gear )) + 
+  geom_bar(position = position_dodge(preserve = "single"))+labs(x="Discuss", y="Count")
+```
+
+-   More they discuss among each other more it is possible that they take all safty gears.
+
+## Segmented Bar chart
+
+```{r,echo=TRUE}
+# bar plot, with each bar representing 100%
+ggplot(AvalanchePrep, aes(x = discuss , fill = gear)) + 
+geom_bar(position = "fill") +
+  labs(y = "Proportion", x="Discuss")
+```
+
+This type of plot is particularly useful if the goal is to compare the percentage of a category in one variable across each level of another variable. You can see the dependence of the two variables. The more they talk to each other the less chances that will take poor safety gears.
+
+## Scatter plot
+
+```{r, echo=TRUE}
+ggplot(granularity, aes(x=age,y=gran))+geom_point()+labs(x="Age", y="Granularity")
+```
+
+## linear regression line
+
+```{r,echo=TRUE}
+ggplot(granularity, aes(x=age,y=gran))+geom_point()+geom_smooth(method = "lm")+labs(x="Age", y="Granularity")
+```
+
+## Add regression fit to your ggplot
+
+```{r, echo=TRUE}
+ggplot(granularity, aes(x=age,y=gran))+geom_point()+geom_smooth(method = "lm")+stat_regline_equation(
+    aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~")),label.x = 15,label.y=1.1,size=5 , color="blue") +labs(x="Age", y="Granularity")
+```
+
+## Smoothing Spline
+
+```{r,echo=TRUE}
+ggplot(granularity, aes(x=age,y=gran))+geom_point()+geom_smooth()
+```
+
+## Check the formula of your polynomial fit
+
+```{r,echo=TRUE}
+formula <- y ~ poly(x, 3, raw = TRUE)
+ggplot(granularity, aes(x=age,y=gran))+geom_point()+
+  stat_smooth(method = "lm", formula = formula)+
+  stat_regline_equation(aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~")),formula = formula, size=5,color="blue"  ) +  theme_bw()+labs(x="Age", y="Granularity")
+
+```
+
+## Line plot
+
+Excerpt of the Gapminder data on life expectancy, GDP per capita, and population by country.
+
+```{r, echo=TRUE}
+data(gapminder, package="gapminder")
+# Select Switzerland cases
+plotdata <- filter(gapminder, country == "Switzerland")
+
+# simple line plot
+ggplot(plotdata, aes(x = year, y = lifeExp)) +
+  geom_line() 
+# line plot with points
+# and improved labeling
+ggplot(plotdata, aes(x = year, y = lifeExp)) +
+  geom_line(size = 1.5, 
+            color = "lightgrey") +
+  geom_point(size = 3, 
+             color = "steelblue") +
+  labs(y = "Life Expectancy (years)", 
+       x = "Year",
+       title = "Life expectancy changes over time",
+       subtitle = "Switzerland  (1952-2007)",
+       caption = "Source: http://www.gapminder.org/data/")
+```
+
+## Grouped kernel density
+
+```{r, echo=TRUE}
+ggplot(granularity,aes(x=gran,group=gender, color=gender, fill=gender))+geom_density(alpha=0.3)+labs(x="Granularity")
+```
+
+## Boxplot
+
+```{r}
+# plot the distribution of salaries by rank using boxplots
+ggplot(granularity, aes(x = gender, y = gran)) +
+  geom_boxplot() +
+  labs(title = "Granularity distribution by gender")
+```
+
+## Salary Data
+
+The mean salary for a sample of university professors by their academic rank.
+
+```{r, echo=TRUE}
+data(Salaries, package="carData")
+```
+
+### Grouped density plots
+
+```{r, echo=TRUE}
+# plot the distribution of salaries by rank using kernel density plots
+ggplot(Salaries, aes(x = salary, fill = rank)) +
+  geom_density(alpha = 0.4) +
+  labs(title = "Salary distribution by rank")
+```
+
+### Boxplot
+
+```{r, echo=TRUE}
+# plot the distribution of salaries by rank using boxplots
+ggplot(Salaries, aes(x = rank, y = salary, color=rank)) +
+  geom_boxplot() +
+  labs(title = "Salary distribution by rank")
+```
+
+```{r, echo=TRUE}
+# plot the distribution of salaries by rank using boxplots
+ggplot(Salaries, aes(x = sex, y = salary, color=sex)) +
+  geom_boxplot() + stat_compare_means()+
+  labs(title = "Salary distribution by sex")
+```
+
+```{r, echo=TRUE}
+# plot the distribution of salaries by rank using boxplots
+ggplot(Salaries, aes(x = discipline, y = salary, color=discipline)) +
+  geom_boxplot() + stat_compare_means()+
+  labs(title = "Salary distribution by Discipline")
+```
+
+### Violon plot
+
+```{r, echo=TRUE}
+# plot the distribution of salaries 
+# by rank using violin plots
+ggplot(Salaries, aes(x = rank, y = salary)) +
+  geom_violin() +
+  labs(title = "Salary distribution by rank")
+```
+
+```{r, echo=TRUE}
+# plot the distribution using violin and boxplots
+ggplot(Salaries, aes(x = rank, y = salary)) +
+  geom_violin(fill = "cornflowerblue") +
+  geom_boxplot(width = .15, 
+               fill = "orange",
+               outlier.color = "orange",
+               outlier.size = 2) + 
+  labs(title = "Salary distribution by rank")
+```
+
+### Ridgeline plot
+
+### Mean/SEM plot
+
+```{r,echo=TRUE}
+# calculate means, standard deviations,
+# standard errors, and 95% confidence 
+# intervals by rank
+plotdata <- Salaries %>%
+  group_by(rank) %>%
+  summarize(n = n(),
+         mean = mean(salary),
+         sd = sd(salary),
+         se = sd / sqrt(n),
+         ci = qt(0.975, df = n - 1) * sd / sqrt(n))
+
+# plot the means and 95% CI
+ggplot(plotdata, 
+       aes(x = rank, 
+           y = mean, 
+           group = 1)) +
+  geom_point(size = 3) +
+  geom_line() +
+  geom_errorbar(aes(ymin = mean - ci/2, 
+                    ymax = mean + ci/2), 
+                width = .1)
+```
+
+Improving the plot:
+
+```{r,echo=TRUE}
+# calculate means and standard errors by rank and sex
+plotdata <- Salaries %>%
+  group_by(rank, sex) %>%
+  summarize(n = n(),
+            mean = mean(salary),
+            sd = sd(salary),
+            se = sd/sqrt(n),
+            ci = qt(0.975, df = n - 1) * sd / sqrt(n))
+# improved means/standard error plot
+pd <- position_dodge(0.2)
+ggplot(plotdata, 
+       aes(x = factor(rank, 
+                      labels = c("Assistant\nProfessor",
+                                 "Associate\nProfessor",
+                                 "Full\nProfessor")), 
+                      y = mean, group=sex, color=sex)) +
+  geom_point(position=pd, 
+             size=3) +
+  geom_line(position=pd, 
+            size = 1) +
+  geom_errorbar(aes(ymin = mean - ci/2, 
+                    ymax = mean + ci/2), 
+                width = .1, 
+                position=pd, 
+                size=1) +
+  scale_y_continuous(label = scales::dollar) +
+  scale_color_brewer(palette="Set1") +
+  theme_minimal() +
+  labs(title = "Mean salary by rank and sex",
+       subtitle = "(95% confidence interval)",
+       x = "", 
+       y = "",
+       color = "Gender")
+```
+
+## Clevland dot chart
+
+```{r,echo=TRUE}
+# subset Asian countries in 2007
+plotdata <- gapminder %>%
+  filter(continent == "Europe" & 
+           year == 2007) %>% mutate(le_col=ifelse(lifeExp>=80,"red","black"))
+
+
+# basic Cleveland plot of life expectancy by country
+ggplot(plotdata, 
+       aes(x= lifeExp, y = country)) +
+  geom_point()+
+  labs(y = "countries", 
+       x = "Life Expectancy",
+       title = "Life expectancy in Europe",
+       subtitle = "(2007)",
+       caption = "Source: http://www.gapminder.org/data/")
+
+# Cleveland plot of life expectancy by country where countries with average over 80 years are colored in red 
+ggplot(plotdata, 
+       aes(x= lifeExp, y = country, group=le_col)) +
+  geom_point(aes(color=ifelse(lifeExp>=80,"red","black")))+labs(y = "countries", 
+       x = "Life Expectancy",
+       title = "Life expectancy in Europe",
+       subtitle = "(2007)",
+       caption = "Source: http://www.gapminder.org/data/")+theme( legend.position ="none")
+```
+
+## Grouping color, shape, size
+
+```{r,echo=TRUE}
+# plot experience vs. salary (color represents rank)
+ggplot(Salaries, aes(x = yrs.since.phd, 
+                     y = salary, 
+                     color=rank)) +
+  geom_point() +
+  labs(title = "Academic salary by rank and years since degree")
+```
+
+```{r,echo=TRUE}
+# plot experience vs. salary 
+# (color represents rank, shape represents sex)
+ggplot(Salaries, aes(x = yrs.since.phd, 
+                     y = salary, 
+                     color = rank, 
+                     shape = sex)) +
+  geom_point(size = 3, alpha = .6) +
+  labs(title = "Academic salary by rank, sex, and years since degree")
+```
+
+```{r, echo=TRUE}
+# plot experience vs. salary 
+# (color represents rank and size represents service)
+ggplot(Salaries, aes(x = yrs.since.phd, 
+                     y = salary, 
+                     color = rank, 
+                     size = yrs.service)) +
+  geom_point(alpha = .6) +
+  labs(title = paste0("Academic salary by rank, years of service, ",
+                      "and years since degree"))
+```
+
+```{r,echo=TRUE}
+# plot experience vs. salary with 
+# fit lines (color represents sex)
+ggplot(Salaries, 
+       aes(x = yrs.since.phd, 
+           y = salary, 
+           color = sex)) +
+  geom_point(alpha = .4, 
+             size=3) +
+  geom_smooth(se=FALSE, 
+              method="lm", 
+              formula=y~poly(x,2), 
+              size = 1.5) +
+  labs(x = "Years Since Ph.D.",
+       title = "Academic Salary by Sex and Years Experience",
+       subtitle = "9-month salary for 2008-2009",
+       y = "",
+       color = "Sex") +
+  scale_y_continuous(label = scales::dollar) +
+  scale_color_brewer(palette="Set1") +
+  theme_minimal()
+```
+
+## Faceting
+
+```{r,echo=TRUE}
+# plot salary histograms by rank and sex
+ggplot(Salaries, aes(x = salary/1000)) +
+  geom_histogram() +
+  facet_grid(sex ~ rank) +
+  labs(title = "Salary histograms by sex and rank",
+       x = "Salary ($1000)")
+```
+
+### Scatter plot matrix
+
+```{r,echo=TRUE}
+# Select the Europe data
+plotdata <- filter(gapminder, 
+                          continent == "Europe")
+
+# plot life expectancy by year, for each country
+ggplot(plotdata, aes(x=year, y = lifeExp)) +
+  geom_line(color="grey") +
+  geom_point(color="blue") +
+  facet_wrap(~country) + 
+  theme_minimal(base_size = 9) +
+  theme(axis.text.x = element_text(angle = 45, 
+                                   hjust = 1)) +
+  labs(title = "Changes in Life Expectancy of Europe",
+       x = "Year",
+       y = "Life Expectancy") 
+```
+
+## 3D scatter plot
+
+```{r, echo=TRUE}
+Salaries$pcolor[Salaries$sex == "Female"] <- "red"
+Salaries$pcolor[Salaries$sex == "Male"] <-"blue"
+with(Salaries, {
+  scatterplot3d(x = yrs.since.phd, 
+                y = yrs.service, 
+                z = salary, 
+                # filled blue circles
+                color= pcolor, 
+                pch = 19, 
+                # lines to the horizontal plane
+                type = "h",
+                main = "3-D Scatterplot Example",
+                xlab = "Years since PhD",
+                ylab = "Years of Service",
+                zlab = "9 month Salary")
+
+# add the legend
+legend(# top left and indented
+       "topleft", inset=.05,
+       # suppress legend box, shrink text 50%
+       bty="n", cex=.5, 
+       title="Sex",
+       c("Female", "Male"), 
+       fill=c("red", "blue"))
+})
+
+```
+
+## Scatter plot matrix
+
+```{r}
+# prepare data
+data("FamilyIQ")
+summary(FamilyIQ)
+
+df <- FamilyIQ %>% 
+    select(-c("family","child" ))
+ 
+
+# create a scatterplot matrix
+ggpairs(df)
+```
