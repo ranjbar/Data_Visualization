@@ -1,0 +1,450 @@
+---
+title: "Data_visualization(II)"
+author: "Setareh"
+date: 'today'
+format:
+  html:
+    embed-resources: true
+    code-background: true
+editor: visual
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+# install.packages("kerndwd")
+library(ggplot2)
+library(dplyr)
+library(MPsychoR) 
+library(kableExtra)
+library(ggpubr)
+library(scatterplot3d)
+library(GGally)
+library(sjPlot)
+library(gridExtra)
+library(MASS)
+library(robustbase)
+library(quantreg)
+library(car)
+library(interactions)
+library(jtools)
+library(sandwich)
+library(quantreg)
+library(sjmisc)
+library(sjPlot)
+library(plotROC)
+```
+
+# Hello World
+
+This file is created just to share the codes that you can use to reproduce the graphs in the slides of the course. The explanation and the use of each visualization is given during the course. That is why you wont see much comments on this file,
+
+However, do not forget to load your libraries before getting on with the rest of the codes.
+
+```{r , eval=FALSE,echo=TRUE}
+library(ggplot2)
+library(dplyr)
+library(MPsychoR) 
+library(kableExtra)
+library(ggpubr)
+library(scatterplot3d)
+library(GGally)
+library(sjPlot)
+library(gridExtra)
+library(MASS)
+library(robustbase)
+library(quantreg)
+library(car)
+library(interactions)
+library(jtools)
+library(sandwich)
+library(quantreg)
+library(sjmisc)
+library(sjPlot)
+library(plotROC)
+```
+
+# Recap
+
+Univaraite visualization to see the distribution of each variable:
+
+```{r, echo=TRUE}
+data(Salaries, package="carData")
+
+ggplot(Salaries,aes(x=salary))+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666")+ geom_histogram(aes(y=..density..), alpha=0.2, colour="black", fill="white",
+                                                                                                      position="identity")+theme(legend.position="none")
+```
+
+```{r, echo=TRUE}
+ggplot(Salaries, 
+       aes(x = yrs.service, 
+           y = salary)) +
+  geom_point(alpha = .4, 
+             size=3) +
+  geom_smooth(se=FALSE, 
+              method="lm", 
+              formula=y~poly(x,3), 
+              size = 1.5) +
+  labs(x = "Years of Service",
+       title = "Academic Salary and Years Experience",
+       subtitle = "9-month salary for 2008-2009",
+       y = "") +
+  scale_y_continuous(label = scales::dollar) +
+  theme_minimal()
+```
+
+```{r, echo=TRUE}
+ggplot(Salaries, 
+       aes(x = yrs.service, 
+           y = salary, 
+           color = discipline)) +
+  geom_point(alpha = .4, 
+             size=3) +
+  geom_smooth(se=FALSE, 
+              method="lm", 
+              formula=y~poly(x,3), 
+              size = 1.5) +
+  labs(x = "Years Since Ph.D.",
+       title = "Academic Salary by discipline and Years Experience",
+       subtitle = "9-month salary for 2008-2009",
+       y = "",
+       color = "Discipline") +
+  scale_y_continuous(label = scales::dollar) +
+  scale_color_brewer(palette="Set1") +
+  theme_minimal()
+```
+
+# Diagnostic plots
+
+## What is a linear Model
+
+```{r}
+x <- rnorm(20, mean=5,sd=1)
+e <- rnorm(20, mean=0, sd=25)
+y <- 5 + 10*x + e
+
+plotdata <- data.frame(y=y, x=x)
+plotdata %>% ggplot(., aes(x,y))+geom_point(alpha = .4, size=3) +ylim(c(0, max(y)))+xlim(c(min(x),max(x)))+ theme(
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank(),
+  axis.ticks = element_blank())+xlab("Independent variable")+ylab("Dependent variable")
+plotdata %>% ggplot(., aes(x,y))+geom_point(alpha = .4, size=3) +geom_smooth(method = "lm", color="blue", se=F) +ylim(c(0, max(y)))+xlim(c(min(x),max(x)))+ theme(
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank(),
+  axis.ticks = element_blank())+xlab("Independent variable")+ylab("Dependent variable")
+```
+
+## Example of linear model
+
+```{r, echo=TRUE}
+ggplot(Salaries,aes(x=yrs.service,y=salary))+geom_point()+geom_smooth(method = "lm")
+model1 <- lm(salary ~ yrs.service + discipline + sex , data = Salaries)
+tab_model(model1)
+#par(mfrow=c(2,2))
+plot(model1)
+```
+
+## Another example
+
+```{r,echo=TRUE}
+data("women")
+ggplot(women,aes(x=height,y=weight))+geom_point()+geom_smooth(method = "lm")
+model2 <- lm(weight ~height,data=women)
+tab_model(model2)
+par(mfrow=c(2,2))
+plot(model2)
+```
+
+# Transformation
+
+## Standardization
+
+```{r, echo=TRUE}
+set.seed(2111)
+x1 <- rnorm(150, mean=15, sd=5)
+dta <- as.data.frame(cbind(x=x1,z_x=as.numeric(scale(x1,center = T,scale = T))))
+
+ggplot(dta,aes(x=x))+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666")
+
+
+ggplot(dta,aes(x=z_x))+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666")
+
+
+ggplot(dta) +geom_density(aes(x=x),fill="#FF6666",alpha=0.4,color="#FF6666")+ geom_density(aes(x=z_x),fill="#FF6666",alpha=0.4,color="#FF6666")
+```
+
+## Reduce Skewness
+
+```{r, echo=TRUE}
+
+Salaries <- Salaries %>% mutate(logsalary=log(salary), sqsalary=sqrt(salary),recsalary=1/salary)
+p1 <-ggplot(Salaries)+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666",aes(x=salary)) +xlab("salary")
+p2 <- ggplot(Salaries)+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666",aes(x=logsalary)) +xlab("Log(salary)")
+p3 <- ggplot(Salaries,aes(x=sqsalary))+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666") +xlab("sqrt(salary)")
+p4 <- ggplot(Salaries,aes(x=recsalary))+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666") +xlab("1/salary")
+grid.arrange(p1,p2,p3,p4,nrow=2)
+
+```
+
+-   A very more skewed distribution
+
+```{r,echo=TRUE}
+data(gapminder, package="gapminder")
+plotdata <- gapminder %>% mutate(loggdp=log(gdpPercap),sqgdp=sqrt(gdpPercap),recgdp=1/gdpPercap)
+
+p1 <- ggplot(plotdata)+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666",aes(x=gdpPercap)) +xlab("gdp per capita")
+p2 <- ggplot(plotdata)+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666",aes(x=loggdp)) +xlab("Log(gdp per capita)")
+p3 <- ggplot(plotdata,aes(x=sqgdp))+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666") +xlab("sqrt(gdp per capita)")
+p4 <- ggplot(plotdata,aes(x=recgdp))+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666") +xlab("1/gdp per capita")
+
+
+grid.arrange(p1,p2,p3,p4,nrow=2)
+```
+
+-   Left skewness:
+
+```{r}
+plotdata <- gapminder %>% filter(continent=="Europe")
+plotdata <- plotdata %>% mutate( sq=(lifeExp)^2,
+                                 cb=(lifeExp)^3,
+                                 psix=(lifeExp)^6)
+p1 <- ggplot(plotdata)+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666",aes(x=lifeExp)) +xlab("life expectancy")
+p2 <- ggplot(plotdata)+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666",aes(x=sq)) +xlab("life expectancy^2")
+p3 <- ggplot(plotdata,aes(x=cb))+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666") +xlab("life expectancy^3")
+p4 <- ggplot(plotdata,aes(x=psix))+geom_density(fill="#FF6666",alpha=0.4,color="#FF6666") +xlab("life expectancy^6")
+
+
+grid.arrange(p1,p2,p3,p4,nrow=2)
+
+```
+
+## Variance stability
+
+## Linear relatonship
+
+```{r,echo=TRUE}
+data(gapminder, package = "gapminder")
+dta <- gapminder %>% filter(continent=="Europe" & lifeExp>60 )
+p1 <- ggplot(dta,aes(x=lifeExp, y=gdpPercap)) + geom_point()+geom_smooth()+geom_smooth(method = "lm",color="red")+ylab("gdp per capita")
+
+p2 <- p1 + scale_y_continuous(trans = "log10") +ylab("log(gdp per capita)")
+
+grid.arrange(p1,p2,nrow=1)
+```
+
+## Addetive versus multiplicative relationship
+
+## BOX-COX transformation
+
+```{r,echo=TRUE}
+bc1 <- boxcox(model1)
+```
+
+-   exact lambda
+
+```{r,echo=TRUE}
+lambda <- bc1$x[which.max(bc1$y)]
+lambda
+
+# transforming the salary 
+Salaries <- Salaries %>% mutate (bc_salary=(salary ^ lambda - 1) / lambda)
+
+```
+
+-   New model with transformed salary with log
+
+```{r,echo=TRUE}
+model3 <- lm(bc_salary ~ yrs.service + discipline +sex , data = Salaries)
+tab_model(model3,digits = 4)
+#par(mfrow=c(2,2))
+plot(model3, which=2)
+```
+
+```{r,echo=TRUE}
+model3 <- lm(log(salary) ~ yrs.service + discipline +sex , data = Salaries)
+tab_model(model3,digits = 4)
+#par(mfrow=c(2,2))
+plot(model3, which=2)
+```
+
+# Robust linear regression
+
+```{r,fig.height=10,fig.width=15,echo=TRUE}
+set.seed(10131986)
+library(MASS)
+library(quantreg)
+l1.data <- function(n1=100,n2=20){
+  data <- mvrnorm(n=n1,mu=c(0, 0),
+                  Sigma=matrix(c(1, .9, .9, 1), ncol=2))
+  # generate 20 'bad' observations
+  data <- rbind(data, mvrnorm(n=n2,
+                              mu=c(-2.5, 2.5), Sigma=0.5*diag(c(1, 1))))
+  data <- data.frame(data)
+  names(data) <- c("X", "Y")
+  ind <- c(rep(1, n1),rep(2, n2))
+  plot(Y ~ X, data, pch=c("x", "o")[ind],
+       col=c("black", "red")[ind], main=paste("N1 =",n1," N2 =", n2))
+  summary(r1 <-rlm(Y ~ X, data=data))
+  abline(r1)
+  abline(lm(Y ~ X, data),lty=2, col="red")
+  abline(lm(Y ~ X, data, subset=1:n1), lty=1, col="blue")
+  legend("bottomright", c("Robust lm","ols","ols on good"),
+         inset=0.02, lty=c(1, 2, 1), col=c("black", "red", "blue"),
+         cex=.9)}
+par(mfrow=c(2, 2))
+l1.data(100, 3)
+l1.data(100, 5)
+l1.data(100, 7)
+l1.data(100, 10)
+```
+
+## Extreme example
+
+```{r,echo=TRUE}
+data("starsCYG",package = "robustbase")
+
+ggplot(starsCYG,aes(x=log.Te,y=log.light))+geom_point()+geom_smooth(method = "lm",se=F,col="red")+xlab("Temperature")+ylab("Light")
+
+tab_model(mod4 <- lm(log.light ~ log.Te,data = starsCYG))
+#par(mfrow=c(2,2))
+plot(mod4,which=2)
+
+ggplot(starsCYG,aes(x=log.Te,y=log.light))+geom_point()+geom_smooth(method = "lm", aes(col="LM"),se=F)+geom_smooth(method = robustbase::"lmrob", aes(col="Robust LM"),se=F)+scale_colour_manual(values = c("red", "blue"), name = "Model")+xlab("Temperature")+ylab("Light")
+
+
+tab_model(mod5 <- lmrob(log.light ~ log.Te,data = starsCYG))
+```
+
+## Another data example
+
+```{r,echo=TRUE}
+ggplot(Salaries, aes(x=yrs.service,y=bc_salary))+geom_point()+geom_smooth(method = "lm", aes(col="LM"),se=F)+geom_smooth(method = robustbase::"lmrob", aes(col="Robust LM"),se=F)+xlab("Years of service")+ylab("log(Salary)")+scale_colour_manual(values = c("red", "blue"), name = "Model")
+
+model3 <- lm(log(salary) ~ yrs.service + discipline +sex , data = Salaries)
+plot(model3,which=2)
+tab_model(model3, digits = 4,pred.labels=c("Intercept","years of service","Discipline(applied)","Sex"),dv.labels = c("LM"))
+model4 <- lmrob(log(salary) ~ yrs.service+ discipline +sex , data = Salaries)
+tab_model(model3, model4, digits = 4,pred.labels=c("Intercept","years of service","Discipline(applied)","Sex"),dv.labels = c("LM","Robust LM"))
+
+## Look at the weight of potential outliers
+hist(model4$rweights, main="Histogram Robust weights", xlab = "weights")
+which(model4$rweights<0.3)
+model4$rweights[c(250,283,318)]
+```
+
+# Polynomial regression
+
+```{r, echo=TRUE}
+
+data("granularity")
+
+ggplot(granularity, aes(x=age,y=gran))+geom_point()+geom_smooth(method = "lm")+stat_regline_equation(
+  aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~")),label.x = 15,label.y=1.1,size=5 , color="blue") +labs(x="Age", y="Granularity")
+
+
+tab_model(model6 <- lm(gran ~ age, data=granularity))
+par(mfrow=c(2,2))
+plot(model6)
+
+formula <- y ~ poly(x, 2, raw = TRUE)
+ggplot(granularity, aes(x=age,y=gran))+geom_point()+
+  stat_smooth(method = "lm", formula = formula)+
+  stat_regline_equation(aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~")),formula = formula, size=5,color="blue"  ) +  labs(x="Age", y="Granularity")
+
+tab_model(model7 <- lm(gran ~ age +I(age^2) , data=granularity))
+par(mfrow=c(2,2))
+plot(model7)
+```
+
+# Interaction
+
+## Example1
+
+```{r,echo=TRUE}
+
+ggplot(Salaries, aes(x=log(yrs.service+1),y=bc_salary, color=discipline))+geom_point()+geom_smooth(method =robustbase::"lmrob")+xlab("log(Years of service)")+ylab("transformed(Salary)")+ggtitle("Lines are fitted by Robust LM")
+
+tab_model(model9 <- lmrob(bc_salary ~ log(yrs.service+1):discipline   , data = Salaries), digits=4,pred.labels=c("Intercept","log(yrs of service:Discip(A))","log(yrs of service:Discip(B))"))
+
+plot(model9)
+
+```
+
+## Example2
+
+```{r,echo=TRUE}
+
+fitiris <- lm(Petal.Length ~ Petal.Width * Species, data = iris)
+
+tab_model(fitiris)
+
+interact_plot(fitiris, pred = Petal.Width, modx = Species,
+              
+              plot.points = TRUE)
+
+```
+
+## Example3
+
+```{r,echo=TRUE}
+
+states <- as.data.frame(state.x77)
+
+fiti <- lm(Income ~ Illiteracy * Murder + `HS Grad`, data = states)
+
+tab_model(fiti)
+
+interact_plot(fiti, pred = Illiteracy, modx = Murder)
+
+```
+
+```{r,echo=TRUE}
+
+tab_model(fiti <- lm(Income ~ Illiteracy * Murder+ `HS Grad`, data = states,
+                     
+                     weights = Population))
+
+interact_plot(fiti, pred = Illiteracy, modx = Murder, plot.points = TRUE)
+
+```
+
+# Classification and ROC curve
+
+start by creating an example data set. There are 2 markers, one that is moderately predictive and one that is not as predictive.
+
+```{r}
+#| echo: true
+set.seed(2529)
+D.ex <- rbinom(200, size = 1, prob = .5)
+M1 <- rnorm(200, mean = D.ex, sd = .65)
+M2 <- rnorm(200, mean = D.ex, sd = 1.5)
+
+test <- data.frame(D = D.ex, D.str = c("Healthy", "Ill")[D.ex + 1], 
+                   M1 = M1, M2 = M2, stringsAsFactors = FALSE)
+
+head(test)
+```
+
+```{r}
+#| echo: true
+basicplot <- ggplot(test, aes(d = D, m = M1)) + geom_roc()
+basicplot
+
+styledplot <- basicplot + style_roc()
+styledplot
+
+longtest <- melt_roc(test, "D", c("M1", "M2"))
+ggplot(longtest, aes(d = D, m = M, color = name)) + geom_roc() + style_roc()
+
+```
+
+# Forest plot
+
+```{r}
+#| echo: true
+model3 <- lm(log(salary) ~ log(yrs.service+1) + discipline +sex , data = Salaries)
+tab_model(model3,digits = 4)
+plot_model(model3)
+#par(mfrow=c(2,2))
+plot(model3, which=2)
+```
